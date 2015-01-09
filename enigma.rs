@@ -42,6 +42,8 @@ struct Rotor {
 struct Config {
     rotors: Vec<Rotor>,
     sigma_reflector: Vec<u8>,
+    plugboard: Vec<u8>,
+    plugboard_inv: Vec<u8>
 }
 
 fn ord(c : char) -> Option<u8> {
@@ -66,6 +68,14 @@ fn add26(x : u8, y : u8) -> u8 {
     return if 26 <= res { res - 26 } else { res };
 }
 fn sub26(x : u8, y : u8) -> u8 { return add26(x, 26 - y); }
+
+fn inv_permutation(sigma : &Vec<u8>) -> Vec<u8> {
+    let mut sigma_inv = Vec::from_elem(sigma.len(), 0u8);
+    for (idx, &sigma_idx) in sigma.iter().enumerate() {
+        sigma_inv[sigma_idx as uint] = idx as u8;
+    }
+    return sigma_inv;
+}
 
 fn step(state : &mut Vec<u8>, config : &Config) {
     if DOUBLE_STEPPING {
@@ -93,7 +103,7 @@ fn step(state : &mut Vec<u8>, config : &Config) {
 
 fn encrypt_one(value : u8, state : &mut Vec<u8>, config : &Config) -> u8 {
     step(state, config);
-    let mut value = value;
+    let mut value = config.plugboard[value as uint];
     for (idx, rotor) in config.rotors.iter().enumerate() {
         value = add26(value, state[idx]);
         value = rotor.sigma[value as uint];
@@ -105,11 +115,22 @@ fn encrypt_one(value : u8, state : &mut Vec<u8>, config : &Config) -> u8 {
         value = rotor.sigma_inv[value as uint];
         value = sub26(value, state[idx]);
     }
-    return value;
+    return config.plugboard_inv[value as uint];
 }
 
 fn str_to_vec8(input : &str) -> Vec<u8> {
     return FromIterator::from_iter(input.chars().map(|c| c as u8 - 'A' as u8));
+}
+
+fn plugboard_config(plugboard: &Vec<(char, char)>) -> Vec<u8> {
+    let mut id = Vec::from_fn(26, |x| x as u8);
+    for &(c1, c2) in plugboard.iter() {
+        let c1 = c1 as u8 - 'A' as u8;
+        let c2 = c2 as u8 - 'A' as u8;
+        id[c1 as uint] = c2;
+        id[c2 as uint] = c1;
+    }
+    return id;
 }
 
 fn create_config() -> Config {
@@ -117,25 +138,27 @@ fn create_config() -> Config {
     for &rotor_idx in [0u, 1, 2].iter() {
         let sigma = str_to_vec8(ROTORS[rotor_idx]);
         let turnover = TURNOVERS[rotor_idx].chars().next().unwrap() as u8 - 'A' as u8;
-        let mut sigma_inv = Vec::from_elem(sigma.len(), 0u8);
-        for (idx, &sigma_idx) in sigma.iter().enumerate() {
-            sigma_inv[sigma_idx as uint] = idx as u8;
-        }
+        let sigma_inv = inv_permutation(&sigma);
         let rotor = Rotor { sigma: sigma, sigma_inv: sigma_inv, turnover: turnover };
         rotors.push(rotor);
     }
     let sigma_reflector = str_to_vec8(REFLECTORS[1]);
-    return Config { rotors: rotors, sigma_reflector: sigma_reflector };
+    let plugboard: Vec<(char, char)> = Vec::new();
+    let plugboard = plugboard_config(&plugboard);
+    let plugboard_inv = inv_permutation(&plugboard);
+    return Config {
+        rotors: rotors,
+        sigma_reflector: sigma_reflector,
+        plugboard: plugboard,
+        plugboard_inv: plugboard_inv,
+    };
 }
 
 fn encrypt(input : &str, key : &str) -> String {
     let config = create_config();
     let mut state = str_to_vec8(key);
     return FromIterator::from_iter(input.chars().filter_map(|c|
-        match ord(c) {
-            Some(c) => Some(chr(encrypt_one(c, &mut state, &config))),
-            None => None,
-        }));
+        ord(c).map(|c| chr(encrypt_one(c, &mut state, &config)))));
 }
 
 fn main() {
