@@ -1,6 +1,8 @@
 use std::io;
 use std::os;
 
+static DOUBLE_STEPPING : bool = true;
+
 static ROTORS : [&'static str, ..8] = [
     "EKMFLGDQVZNTOWYHXUSPAIBRCJ",
     "AJDKSIRUXBLHWTMCQGZNPYFVOE",
@@ -65,12 +67,32 @@ fn add26(x : u8, y : u8) -> u8 {
 }
 fn sub26(x : u8, y : u8) -> u8 { return add26(x, 26 - y); }
 
-fn encrypt_one(value : u8, state : &mut Vec<u8>, config : &Config) -> u8 {
-    for (idx, rotor) in config.rotors.iter().enumerate() {
-        let should_break = state[idx] != rotor.turnover;
-        state[idx] = add26(state[idx], 1);
-        if should_break { break; }
+fn step(state : &mut Vec<u8>, config : &Config) {
+    if DOUBLE_STEPPING {
+        let mut last_gray = None;
+        for idx in range(0u, config.rotors.len() - 1) {
+            if state[idx] == config.rotors[idx].turnover { last_gray = Some(idx); }
+        }
+        match last_gray {
+            None => state[0] = add26(state[0], 1),
+            Some(last_gray) => {
+                for idx in range(0u, last_gray + 2) {
+                    state[idx] = add26(state[idx], 1);
+                }
+            }
+        }
     }
+    else {
+        for (idx, rotor) in config.rotors.iter().enumerate() {
+            let should_break = state[idx] != rotor.turnover;
+            state[idx] = add26(state[idx], 1);
+            if should_break { break; }
+        }
+    }
+}
+
+fn encrypt_one(value : u8, state : &mut Vec<u8>, config : &Config) -> u8 {
+    step(state, config);
     let mut value = value;
     for (idx, rotor) in config.rotors.iter().enumerate() {
         value = add26(value, state[idx]);
