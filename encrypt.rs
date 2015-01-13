@@ -121,6 +121,11 @@ fn str_to_vec8(input : &str) -> Vec<u8> {
     return input.chars().map(|c| c as u8 - 'A' as u8).collect();
 }
 
+fn str_to_vec8_rev(input : &str) -> Vec<u8> {
+    return input.chars().map(|c| c as u8 - 'A' as u8).rev().collect();
+}
+
+
 fn plugboard_config(plugboard: &Vec<(char, char)>) -> Vec<u8> {
     let mut id: Vec<u8> = (0..26).map(|x| x as u8).collect();
     for &(c1, c2) in plugboard.iter() {
@@ -155,7 +160,7 @@ fn create_config() -> Config {
 
 pub fn encrypt(input : &str, key : &str) -> String {
     let config = create_config();
-    let mut state = str_to_vec8(key);
+    let mut state = str_to_vec8_rev(key);
     return input.chars().filter_map(|c|
         ord(c).map(|c| chr(encrypt_one(c, &mut state, &config)))).collect();
 }
