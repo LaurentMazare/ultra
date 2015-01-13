@@ -1,5 +1,4 @@
 use std::io;
-use std::iter;
 use std::os;
 mod encrypt;
 

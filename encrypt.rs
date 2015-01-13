@@ -1,6 +1,4 @@
-use std::io;
 use std::iter;
-use std::os;
 
 static DOUBLE_STEPPING : bool = true;
 
