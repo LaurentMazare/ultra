@@ -137,9 +137,9 @@ fn plugboard_config(plugboard: &Vec<(char, char)>) -> Vec<u8> {
     return id;
 }
 
-fn create_config() -> Config {
+fn create_config(rotor_config : &Vec<usize>) -> Config {
     let mut rotors = Vec::new();
-    for &rotor_idx in [0us, 1, 2].iter() {
+    for &rotor_idx in rotor_config.iter() {
         let sigma = str_to_vec8(ROTORS[rotor_idx]);
         let turnover = TURNOVERS[rotor_idx].chars().next().unwrap() as u8 - 'A' as u8;
         let sigma_inv = inv_permutation(&sigma);
@@ -158,8 +158,8 @@ fn create_config() -> Config {
     };
 }
 
-pub fn encrypt(input : &str, key : &str) -> String {
-    let config = create_config();
+pub fn encrypt(input : &str, rotor_config : &Vec<usize>, key : &str) -> String {
+    let config = create_config(rotor_config);
     let mut state = str_to_vec8_rev(key);
     return input.chars().filter_map(|c|
         ord(c).map(|c| chr(encrypt_one(c, &mut state, &config)))).collect();

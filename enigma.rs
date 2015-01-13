@@ -8,6 +8,7 @@ fn main() {
         println!("Usage: {} KEY", args[0]);
     }
     else {
+        let rotor_config = vec![ 0us, 1, 2 ];
         let key = args[1].as_slice(); 
         if key.len() != 3 {
             println!("Key '{}' has a length different from 3", key);
@@ -15,7 +16,7 @@ fn main() {
         else {
             match io::stdin().read_line() {
                 Ok(input) => {
-                    let output = encrypt::encrypt(input.as_slice(), key);
+                    let output = encrypt::encrypt(input.as_slice(), &rotor_config, key);
                     println!("{}", output);
                 },
                 Err(_) => ()
