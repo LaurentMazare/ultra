@@ -20,13 +20,14 @@ fn chr(v : u8) -> char {
     return (v + 'A' as u8) as char;
 }
 
-fn brute_force_key(ciphertext : &str, rotor_config : &Vec<usize>) -> Option<(f64, String)> {
+fn brute_force_key(ciphertext : &str, rotor_config : &Vec<usize>, rings : &str) -> Option<(f64, String)> {
     let mut maximum_score : Option<(f64, String)> = None;
     for c1 in (0u8 .. 26) {
         for c2 in (0u8 .. 26) {
             for c3 in (0u8 .. 26) {
+                // This is likely to be very inefficient.
                 let key : String = [ chr(c1), chr(c2), chr(c3) ].iter().map(|x| *x).collect();
-                let plaintext = encrypt::encrypt(ciphertext.as_slice(), rotor_config, key.as_slice());
+                let plaintext = encrypt::encrypt(ciphertext.as_slice(), rotor_config, key.as_slice(), rings);
                 let s = score(plaintext.as_slice());
                 let optimal =
                     match maximum_score {
@@ -42,7 +43,7 @@ fn brute_force_key(ciphertext : &str, rotor_config : &Vec<usize>) -> Option<(f64
     return maximum_score;
 }
 
-fn brute_force(ciphertext : &str) -> Option<(f64, Vec<usize>, String)> {
+fn brute_force_rings(ciphertext : &str, rings : &str) -> Option<(f64, Vec<usize>, String)> {
     let mut maximum_score : Option<(f64, Vec<usize>, String)> = None;
     // Quite awful and inefficient...
     for r1 in (0us .. 5) {
@@ -50,7 +51,7 @@ fn brute_force(ciphertext : &str) -> Option<(f64, Vec<usize>, String)> {
             for r3 in (0us .. 5) {
                 if r1 == r2 || r1 == r3 || r2 == r3 { continue; }
                 let rotor_config = vec![ r1, r2, r3 ];
-                match brute_force_key(ciphertext, &rotor_config) {
+                match brute_force_key(ciphertext, &rotor_config, rings) {
                     None => (),
                     Some ((s, key)) => {
                         let optimal =
@@ -69,14 +70,39 @@ fn brute_force(ciphertext : &str) -> Option<(f64, Vec<usize>, String)> {
     return maximum_score;
 }
 
+fn brute_force(ciphertext : &str) -> Option<(f64, Vec<usize>, String, String)> {
+    let mut where_max = String::from_str("AAA");
+    match brute_force_rings(ciphertext, where_max.as_slice()) {
+        None => None,
+        Some((affinity, rotor_config, key)) => {
+            let mut maximum_score = affinity;
+            for c1 in (0u8 .. 26) {
+                for c2 in (0u8 .. 26) {
+                    for c3 in (0u8 .. 26) {
+                        let rings : String = [ chr(c1), chr(c2), chr(c3) ].iter().map(|x| *x).collect();
+                        let plaintext = encrypt::encrypt(ciphertext, &rotor_config, key.as_slice(), rings.as_slice());
+                        let s = score(plaintext.as_slice());
+                        println!("{} {} {}", rings, plaintext, s);
+                        if maximum_score < s {
+                            maximum_score = s;
+                            where_max = rings;
+                        }
+                    }
+                }
+            }
+            return Some((maximum_score, rotor_config, key, where_max));
+        }
+    }
+}
+
 fn main() {
     match io::stdin().read_line() {
         Ok(input) => {
             match brute_force(input.as_slice()) {
                 None => println!("No optimal key found."),
-                Some((score, rotor_config, key)) => {
+                Some((score, rotor_config, key, rings)) => {
                     println!("{} {}", key, score);
-                    println!("{}", encrypt::encrypt(input.as_slice(), &rotor_config, key.as_slice()));
+                    println!("{}", encrypt::encrypt(input.as_slice(), &rotor_config, key.as_slice(), rings.as_slice()));
                 }
             }
         },
