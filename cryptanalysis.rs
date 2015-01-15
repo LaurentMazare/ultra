@@ -20,6 +20,10 @@ fn chr(v : u8) -> char {
     return (v + 'A' as u8) as char;
 }
 
+fn ord(c : char) -> u8 {
+    return (c as u8 - 'A' as u8);
+}
+
 fn brute_force_key(ciphertext : &str, rotor_config : &Vec<usize>, rings : &str) -> Option<(f64, String)> {
     let mut maximum_score : Option<(f64, String)> = None;
     for c1 in (0u8 .. 26) {
@@ -76,13 +80,18 @@ fn brute_force(ciphertext : &str) -> Option<(f64, Vec<usize>, String, String)> {
         None => None,
         Some((affinity, rotor_config, key)) => {
             let mut maximum_score = affinity;
+            let key_vec : Vec<char> = key.chars().collect();
+            let k1 = ord(key_vec[0]);
+            let k2 = ord(key_vec[1]);
+            let k3 = ord(key_vec[2]);
             for c1 in (0u8 .. 26) {
                 for c2 in (0u8 .. 26) {
                     for c3 in (0u8 .. 26) {
                         let rings : String = [ chr(c1), chr(c2), chr(c3) ].iter().map(|x| *x).collect();
+                        let key : String = [ chr((c1 + k1) % 26), chr((c2 + k2 - 1) % 26), chr((c3 + k3) % 26) ].iter().map(|x| *x).collect();
                         let plaintext = encrypt::encrypt(ciphertext, &rotor_config, key.as_slice(), rings.as_slice());
                         let s = score(plaintext.as_slice());
-                        println!("{} {} {}", rings, plaintext, s);
+                        println!("{} {} {} {}", rings, key, plaintext, s);
                         if maximum_score < s {
                             maximum_score = s;
                             where_max = rings;
