@@ -43,6 +43,7 @@ struct Config {
     sigma_reflector: Vec<u8>,
     plugboard: Vec<u8>,
     plugboard_inv: Vec<u8>,
+    rings: Vec<u8>,
 }
 
 fn ord(c : char) -> Option<u8> {
@@ -104,15 +105,15 @@ fn encrypt_one(value : u8, state : &mut Vec<u8>, config : &Config) -> u8 {
     step(state, config);
     let mut value = config.plugboard[value as usize];
     for (idx, rotor) in config.rotors.iter().enumerate() {
-        value = add26(value, state[idx]);
+        value = add26(sub26(value, config.rings[idx]), state[idx]);
         value = rotor.sigma[value as usize];
-        value = sub26(value, state[idx]);
+        value = sub26(add26(value, config.rings[idx]), state[idx]);
     }
     value = config.sigma_reflector[value as usize];
     for (idx, rotor) in config.rotors.iter().enumerate().rev() {
-        value = add26(value, state[idx]);
+        value = add26(sub26(value, config.rings[idx]), state[idx]);
         value = rotor.sigma_inv[value as usize];
-        value = sub26(value, state[idx]);
+        value = sub26(add26(value, config.rings[idx]), state[idx]);
     }
     return config.plugboard_inv[value as usize];
 }
@@ -137,7 +138,7 @@ fn plugboard_config(plugboard: &Vec<(char, char)>) -> Vec<u8> {
     return id;
 }
 
-fn create_config(rotor_config : &Vec<usize>) -> Config {
+fn create_config(rotor_config : &Vec<usize>, rings : &str) -> Config {
     let mut rotors = Vec::new();
     for &rotor_idx in rotor_config.iter() {
         let sigma = str_to_vec8(ROTORS[rotor_idx]);
@@ -155,11 +156,12 @@ fn create_config(rotor_config : &Vec<usize>) -> Config {
         sigma_reflector: sigma_reflector,
         plugboard: plugboard,
         plugboard_inv: plugboard_inv,
+        rings: str_to_vec8(rings),
     };
 }
 
-pub fn encrypt(input : &str, rotor_config : &Vec<usize>, key : &str) -> String {
-    let config = create_config(rotor_config);
+pub fn encrypt(input : &str, rotor_config : &Vec<usize>, key : &str, rings : &str) -> String {
+    let config = create_config(rotor_config, rings);
     let mut state = str_to_vec8_rev(key);
     return input.chars().filter_map(|c|
         ord(c).map(|c| chr(encrypt_one(c, &mut state, &config)))).collect();
