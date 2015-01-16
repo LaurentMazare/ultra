@@ -79,23 +79,20 @@ fn brute_force_key(ciphertext : &str, rotor_config : &Vec<usize>, rings : &str) 
 fn brute_force_rings(ciphertext : &str, rings : &str) -> Option<(f64, Vec<usize>, String)> {
     let mut maximum_score : Option<(f64, Vec<usize>, String)> = None;
     // Quite awful and inefficient...
-    for r1 in (0us .. 5) {
-        for r2 in (0us .. 5) {
-            for r3 in (0us .. 5) {
-                if r1 == r2 || r1 == r3 || r2 == r3 { continue; }
-                let rotor_config = vec![ r1, r2, r3 ];
-                match brute_force_key(ciphertext, &rotor_config, rings) {
-                    None => (),
-                    Some ((s, key)) => {
-                        let optimal =
-                            match maximum_score {
-                                None => true,
-                                Some((ms, _, _)) => ms < s
-                            };
-                        if optimal {
-                            maximum_score = Some((s, rotor_config, key));
-                        }
-                    }
+    for rotor_config in Product::new(5us, 3us) {
+        if rotor_config[0] == rotor_config[1] ||
+           rotor_config[0] == rotor_config[2] ||
+           rotor_config[1] == rotor_config[2] { continue; }
+        match brute_force_key(ciphertext, &rotor_config, rings) {
+            None => (),
+            Some ((s, key)) => {
+                let optimal =
+                    match maximum_score {
+                        None => true,
+                        Some((ms, _, _)) => ms < s
+                    };
+                if optimal {
+                    maximum_score = Some((s, rotor_config, key));
                 }
             }
         }
