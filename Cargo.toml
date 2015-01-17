@@ -1,0 +1,5 @@
+[package]
+
+name = "enigma"
+version = "0.0.1"
+authors = ["laurent <laurent.mazare@gmail.com>"]
