@@ -167,4 +167,23 @@ pub fn encrypt(input : &str, rotor_config : &Vec<usize>, key : &str, rings : &st
         ord(c).map(|c| chr(encrypt_one(c, &mut state, &config)))).collect();
 }
 
+fn test_one(plaintext: &str, ciphertext: &str, rotor_config: &Vec<usize>, key: &str, rings: &str) {
+    let computed_ciphertext = encrypt(plaintext, rotor_config, key, rings);
+    let computed_plaintext = encrypt(ciphertext, rotor_config, key, rings);
+    assert_eq!(computed_plaintext, plaintext);
+    assert_eq!(computed_ciphertext, ciphertext);
+}
 
+#[test]
+fn encrypt_tests() {
+    test_one(
+        "QUEJAIMEAFAIREAPPRENDREUNNOMBREUTILEAUXSAGESIMMORTELARCHIMEDEARTISTEINGENIEURQUIDETONJUGEMENTPEUTPRISERLAVALEURPOURMOITONPROBLEMEEUTDEPAREILSAVANTAGES".as_slice(),
+        "UBTSGAGKIOJYHNNGYGWDIEXLIQQHDVALZBFLTKVPIDHNHPETEHGGEEKDCCGBSWDQJGYFPUDHIVBWNLTJHPJPTMHJYFPKSYUBUOPOTFHSJJBFCVUJVJWSMDJVQCZKEMBYLBJFIZRDZFCIQORVGBOBIT".as_slice(),
+        &vec![ 0us, 1, 2 ], "AAA".as_slice(), "AAA".as_slice()
+    );
+    test_one(
+        "HELLOWORLD".as_slice(),
+        "CDMOGOSHXC".as_slice(),
+        &vec![ 0us, 1, 2 ], "LMZ".as_slice(), "AAA".as_slice()
+    );
+}
