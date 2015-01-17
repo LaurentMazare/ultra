@@ -58,6 +58,13 @@ fn ord(c : char) -> u8 {
     return (c as u8 - 'A' as u8);
 }
 
+fn get_worst(treeset: &BTreeSet<(i64, String, Vec<usize>)>) -> Option<(i64, String, Vec<usize>)> {
+    match treeset.iter().next().clone() {
+        None => None,
+        Some(v) => Some(v.clone()),
+    }
+}
+
 fn brute_force_rotors_and_key(ciphertext : &str, rings : &str) -> BTreeSet<(i64, String, Vec<usize>)> {
     let mut best_rotors_and_key = BTreeSet::new();
     // Quite awful and inefficient...
@@ -75,13 +82,12 @@ fn brute_force_rotors_and_key(ciphertext : &str, rings : &str) -> BTreeSet<(i64,
                 best_rotors_and_key.insert((score, key, rotor_config.clone()));
             }
             else {
-                // TODO: remove the .clone()
-                match best_rotors_and_key.clone().iter().next().clone() {
+                match get_worst(&best_rotors_and_key) {
                     None => (),
                     Some(worst) => {
-                        let (worst_score, _, _) = *worst;
+                        let (worst_score, _, _) = worst;
                         if worst_score < score {
-                            best_rotors_and_key.remove(worst);
+                            best_rotors_and_key.remove(&worst);
                             best_rotors_and_key.insert((score, key, rotor_config.clone()));
                         }
                     },
@@ -98,7 +104,6 @@ fn brute_force(ciphertext : &str) -> Option<(f64, String, Vec<usize>, String)> {
     let best_rotors_and_key = brute_force_rotors_and_key(ciphertext, "AAA".as_slice());
     for &(affinity, ref key, ref rotor_config) in best_rotors_and_key.iter().rev() {
         let rotor_config_str: String = rotor_config.iter().map(|&x| (x as u8 + '0' as u8) as char).collect();
-        println!("{} {} {}", affinity, key, rotor_config_str);
         for cs in Product::new(26us, 3us) {
             let rings : String = cs.iter().map(|&x| chr(x as u8)).collect();
             let key : String = key.chars().zip(cs.iter()).map(|(x, &y)| chr((ord(x) + y as u8) % 26)).collect();
