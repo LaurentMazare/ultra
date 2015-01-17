@@ -32,11 +32,17 @@ struct Rotor {
     turnover: u8,
 }
 
-struct Config {
+pub struct World {
     rotors: Vec<Rotor>,
-    sigma_reflector: Vec<u8>,
-    plugboard: Vec<u8>,
-    plugboard_inv: Vec<u8>,
+    reflectors: Vec<Vec<u8>>,
+    id: Vec<u8>,
+}
+
+struct Config<'a> {
+    rotors: Vec<&'a Rotor>,
+    sigma_reflector: &'a Vec<u8>,
+    plugboard: &'a Vec<u8>,
+    plugboard_inv: &'a Vec<u8>,
     rings: Vec<u8>,
 }
 
@@ -131,40 +137,44 @@ fn plugboard_config(plugboard: &Vec<(char, char)>) -> Vec<u8> {
     return id;
 }
 
-fn create_config(rotor_config : &Vec<usize>, rings : &str) -> Config {
+fn create_config<'a>(world: &'a World, rotor_config: &Vec<usize>, rings: &str) -> Config<'a> {
+    Config {
+        rotors: rotor_config.iter().map(|&x| &world.rotors[x]).collect(),
+        sigma_reflector: &world.reflectors[1],
+        plugboard: &world.id,
+        plugboard_inv: &world.id,
+        rings: str_to_vec8(rings),
+    }
+}
+
+pub fn world() -> World {
     let mut rotors = Vec::new();
-    for &rotor_idx in rotor_config.iter() {
+    // This should be done with an indexed map
+    for rotor_idx in (0us .. ROTORS.len()) {
         let sigma = str_to_vec8(ROTORS[rotor_idx]);
         let turnover = TURNOVERS[rotor_idx] as u8 - 'A' as u8;
         let sigma_inv = inv_permutation(&sigma);
         let rotor = Rotor { sigma: sigma, sigma_inv: sigma_inv, turnover: turnover };
         rotors.push(rotor);
     }
-    let sigma_reflector = str_to_vec8(REFLECTORS[1]);
-    let plugboard: Vec<(char, char)> = Vec::new();
-    let plugboard = plugboard_config(&plugboard);
-    let plugboard_inv = inv_permutation(&plugboard);
-    return Config {
-        rotors: rotors,
-        sigma_reflector: sigma_reflector,
-        plugboard: plugboard,
-        plugboard_inv: plugboard_inv,
-        rings: str_to_vec8(rings),
-    };
+    let id = (0u8 .. 26).collect();
+    let reflectors = REFLECTORS.iter().map(|&s| str_to_vec8(s)).collect();
+    World { rotors: rotors, reflectors: reflectors, id: id }
 }
 
 pub fn input_to_u8(input: &str) -> Vec<u8> {
     input.chars().filter_map(|c| ord(c)).collect()
 }
 
-pub fn encrypt_u8(input: &Vec<u8>, rotor_config: &Vec<usize>, key: &str, rings: &str) -> Vec<u8> {
-    let config = create_config(rotor_config, rings);
+pub fn encrypt_u8(world: &World, input: &Vec<u8>, rotor_config: &Vec<usize>, key: &str, rings: &str) -> Vec<u8> {
+    let config = create_config(world, rotor_config, rings);
     let mut state = str_to_vec8_rev(key);
     input.iter().map(|&c| encrypt_one(c, &mut state, &config)).collect()
 }
 
 pub fn encrypt(input : &str, rotor_config : &Vec<usize>, key : &str, rings : &str) -> String {
-    let config = create_config(rotor_config, rings);
+    let world = world();
+    let config = create_config(&world, rotor_config, rings);
     let mut state = str_to_vec8_rev(key);
     return input.chars().filter_map(|c|
         ord(c).map(|c| chr(encrypt_one(c, &mut state, &config)))).collect();

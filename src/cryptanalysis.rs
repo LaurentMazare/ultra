@@ -65,7 +65,7 @@ fn get_worst(treeset: &BTreeSet<(i64, String, Vec<usize>)>) -> Option<(i64, Stri
     }
 }
 
-fn brute_force_rotors_and_key(ciphertext : &Vec<u8>, rings : &str) -> BTreeSet<(i64, String, Vec<usize>)> {
+fn brute_force_rotors_and_key(world: &encrypt::World, ciphertext : &Vec<u8>, rings : &str) -> BTreeSet<(i64, String, Vec<usize>)> {
     let mut best_rotors_and_key = BTreeSet::new();
     // Quite awful and inefficient...
     for rotor_config in Product::new(5us, 3us) {
@@ -74,7 +74,7 @@ fn brute_force_rotors_and_key(ciphertext : &Vec<u8>, rings : &str) -> BTreeSet<(
            rotor_config[1] == rotor_config[2] { continue; }
         for cs in Product::new(26us, 3us) {
             let key : String = cs.iter().map(|&x| chr(x as u8)).collect();
-            let plaintext = encrypt::encrypt_u8(ciphertext, &rotor_config, key.as_slice(), rings);
+            let plaintext = encrypt::encrypt_u8(world, ciphertext, &rotor_config, key.as_slice(), rings);
             let score = score(&plaintext);
             let score = score as i64;
             // Only keep the 100 best keys...
@@ -99,16 +99,17 @@ fn brute_force_rotors_and_key(ciphertext : &Vec<u8>, rings : &str) -> BTreeSet<(
 }
 
 pub fn brute_force(ciphertext : &str) -> Option<(f64, String, Vec<usize>, String)> {
+    let world = encrypt::world();
     let ciphertext = encrypt::input_to_u8(ciphertext);
     let mut maximum_score = 0. as f64;
     let mut where_max = None;
-    let best_rotors_and_key = brute_force_rotors_and_key(&ciphertext, "AAA".as_slice());
+    let best_rotors_and_key = brute_force_rotors_and_key(&world, &ciphertext, "AAA".as_slice());
     for &(affinity, ref key, ref rotor_config) in best_rotors_and_key.iter().rev() {
         let rotor_config_str: String = rotor_config.iter().map(|&x| (x as u8 + '0' as u8) as char).collect();
         for cs in Product::new(26us, 3us) {
             let rings : String = cs.iter().map(|&x| chr(x as u8)).collect();
             let key : String = key.chars().zip(cs.iter()).map(|(x, &y)| chr((ord(x) + y as u8) % 26)).collect();
-            let plaintext = encrypt::encrypt_u8(&ciphertext, rotor_config, key.as_slice(), rings.as_slice());
+            let plaintext = encrypt::encrypt_u8(&world, &ciphertext, rotor_config, key.as_slice(), rings.as_slice());
             let s = score(&plaintext);
             if maximum_score == 0. || maximum_score < s {
                 maximum_score = s;
