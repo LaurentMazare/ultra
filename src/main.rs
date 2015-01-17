@@ -1,3 +1,4 @@
+#![allow(unstable)]
 use std::io;
 use std::os;
 mod encrypt;
@@ -30,7 +31,7 @@ fn main_encrypt(args: &Vec<String>) {
     }
 }
 
-fn main_break(args: &Vec<String>) {
+fn main_break(_args: &Vec<String>) {
     match io::stdin().read_line() {
         Ok(input) => {
             match cryptanalysis::brute_force(input.as_slice()) {

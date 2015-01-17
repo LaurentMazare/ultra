@@ -1,4 +1,3 @@
-use std::io;
 use std::collections::BTreeSet;
 use encrypt;
 use quadgram_data;
@@ -41,21 +40,13 @@ fn score(text : &Vec<u8>) -> f64 {
     let mut qgram_index : usize = 0;
     for idx in (0us .. text.len()) {
         let c = text[idx];
-        if c < 0 || 25 < c { continue; }
+        if 25 < c { continue; }
         qgram_index = (qgram_index % (26 * 26 * 26)) * 26 + c as usize;
         if 3 <= idx {
             score += quadgram_data::QGRAM[qgram_index];
         }
     }
     return score;
-}
-
-fn chr(v : u8) -> char {
-    return (v + 'A' as u8) as char;
-}
-
-fn ord(c : char) -> u8 {
-    return (c as u8 - 'A' as u8);
 }
 
 fn get_worst(treeset: &BTreeSet<(i64, Vec<u8>, Vec<u8>)>) -> Option<(i64, Vec<u8>, Vec<u8>)> {
@@ -103,7 +94,7 @@ pub fn brute_force(ciphertext : &str) -> Option<(f64, String, Vec<u8>, String)> 
     let mut maximum_score = 0. as f64;
     let mut where_max = None;
     let best_rotors_and_key = brute_force_rotors_and_key(&world, &ciphertext, &vec![0u8, 0, 0]);
-    for &(affinity, ref key, ref rotor_config) in best_rotors_and_key.iter().rev() {
+    for &(_score, ref key, ref rotor_config) in best_rotors_and_key.iter().rev() {
         for rings in Product::new(26u8, 3us) {
             let key = key.iter().zip(rings.iter()).map(|(&x, &y)| (x + y) % 26).collect();
             let plaintext = encrypt::encrypt_u8(&world, &ciphertext, rotor_config, &key, &rings);
