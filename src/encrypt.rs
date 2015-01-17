@@ -126,17 +126,6 @@ fn str_to_vec8_rev(input : &str) -> Vec<u8> {
     return input.chars().map(|c| c as u8 - 'A' as u8).rev().collect();
 }
 
-fn plugboard_config(plugboard: &Vec<(char, char)>) -> Vec<u8> {
-    let mut id: Vec<u8> = (0..26).map(|x| x as u8).collect();
-    for &(c1, c2) in plugboard.iter() {
-        let c1 = c1 as u8 - 'A' as u8;
-        let c2 = c2 as u8 - 'A' as u8;
-        id[c1 as usize] = c2;
-        id[c2 as usize] = c1;
-    }
-    return id;
-}
-
 fn create_config<'a>(world: &'a World, rotor_config: &Vec<usize>, rings: &str) -> Config<'a> {
     Config {
         rotors: rotor_config.iter().map(|&x| &world.rotors[x]).collect(),
@@ -147,6 +136,7 @@ fn create_config<'a>(world: &'a World, rotor_config: &Vec<usize>, rings: &str) -
     }
 }
 
+// world() is used to convert ROTORS, TURNOVERS, and REFLECTORS to some appropriate types.
 pub fn world() -> World {
     let mut rotors = Vec::new();
     // This should be done with an indexed map
@@ -166,9 +156,10 @@ pub fn input_to_u8(input: &str) -> Vec<u8> {
     input.chars().filter_map(|c| ord(c)).collect()
 }
 
-pub fn encrypt_u8(world: &World, input: &Vec<u8>, rotor_config: &Vec<usize>, key: &str, rings: &str) -> Vec<u8> {
+pub fn encrypt_u8(world: &World, input: &Vec<u8>, rotor_config: &Vec<usize>, key: &Vec<usize>, rings: &str) -> Vec<u8> {
     let config = create_config(world, rotor_config, rings);
-    let mut state = str_to_vec8_rev(key);
+    // Is this really the best way to reverse a Vec ?
+    let mut state = key.iter().rev().map(|&x| x as u8).collect();
     input.iter().map(|&c| encrypt_one(c, &mut state, &config)).collect()
 }
 
