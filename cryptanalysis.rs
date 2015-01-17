@@ -1,4 +1,5 @@
 use std::io;
+use std::collections::BTreeSet;
 mod encrypt;
 mod quadgram_data;
 
@@ -57,69 +58,60 @@ fn ord(c : char) -> u8 {
     return (c as u8 - 'A' as u8);
 }
 
-fn brute_force_key(ciphertext : &str, rotor_config : &Vec<usize>, rings : &str) -> Option<(f64, String)> {
-    let mut maximum_score : Option<(f64, String)> = None;
-    for cs in Product::new(26us, 3us) {
-        // This is likely to be very inefficient.
-        let key : String = cs.iter().map(|&x| chr(x as u8)).collect();
-        let plaintext = encrypt::encrypt(ciphertext.as_slice(), rotor_config, key.as_slice(), rings);
-        let s = score(plaintext.as_slice());
-        let optimal =
-            match maximum_score {
-                None => true,
-                Some((ms, _)) => ms < s
-            };
-        if optimal {
-            maximum_score = Some((s, key));
-        }
-    }
-    return maximum_score;
-}
-
-fn brute_force_rings(ciphertext : &str, rings : &str) -> Option<(f64, Vec<usize>, String)> {
-    let mut maximum_score : Option<(f64, Vec<usize>, String)> = None;
+fn brute_force_rotors_and_key(ciphertext : &str, rings : &str) -> BTreeSet<(i64, String, Vec<usize>)> {
+    let mut best_rotors_and_key = BTreeSet::new();
     // Quite awful and inefficient...
     for rotor_config in Product::new(5us, 3us) {
         if rotor_config[0] == rotor_config[1] ||
            rotor_config[0] == rotor_config[2] ||
            rotor_config[1] == rotor_config[2] { continue; }
-        match brute_force_key(ciphertext, &rotor_config, rings) {
-            None => (),
-            Some ((s, key)) => {
-                let optimal =
-                    match maximum_score {
-                        None => true,
-                        Some((ms, _, _)) => ms < s
-                    };
-                if optimal {
-                    maximum_score = Some((s, rotor_config, key));
+        for cs in Product::new(26us, 3us) {
+            let key : String = cs.iter().map(|&x| chr(x as u8)).collect();
+            let plaintext = encrypt::encrypt(ciphertext.as_slice(), &rotor_config, key.as_slice(), rings);
+            let score = score(plaintext.as_slice());
+            let score = score as i64;
+            // Only keep the 100 best keys...
+            if best_rotors_and_key.len() < 100 {
+                best_rotors_and_key.insert((score, key, rotor_config.clone()));
+            }
+            else {
+                // TODO: remove the .clone()
+                match best_rotors_and_key.clone().iter().next().clone() {
+                    None => (),
+                    Some(worst) => {
+                        let (worst_score, _, _) = *worst;
+                        if worst_score < score {
+                            best_rotors_and_key.remove(worst);
+                            best_rotors_and_key.insert((score, key, rotor_config.clone()));
+                        }
+                    },
                 }
             }
         }
     }
-    return maximum_score;
+    return best_rotors_and_key;
 }
 
-fn brute_force(ciphertext : &str) -> Option<(f64, Vec<usize>, String, String)> {
-    let mut where_max = String::from_str("AAA");
-    match brute_force_rings(ciphertext, where_max.as_slice()) {
-        None => None,
-        Some((affinity, rotor_config, key)) => {
-            let mut maximum_score = affinity;
-            for cs in Product::new(26us, 3us) {
-                let rings : String = cs.iter().map(|&x| chr(x as u8)).collect();
-                let key : String = key.chars().zip(cs.iter()).map(|(x, &y)| chr((ord(x) + y as u8) % 26)).collect();
-                let plaintext = encrypt::encrypt(ciphertext, &rotor_config, key.as_slice(), rings.as_slice());
-                let s = score(plaintext.as_slice());
-                println!("{} {} {} {}", rings, key, plaintext, s);
-                if maximum_score < s {
-                    maximum_score = s;
-                    where_max = rings;
-                }
+fn brute_force(ciphertext : &str) -> Option<(f64, String, Vec<usize>, String)> {
+    let mut maximum_score = 0. as f64;
+    let mut where_max = None;
+    let best_rotors_and_key = brute_force_rotors_and_key(ciphertext, "AAA".as_slice());
+    for &(affinity, ref key, ref rotor_config) in best_rotors_and_key.iter().rev() {
+        let rotor_config_str: String = rotor_config.iter().map(|&x| (x as u8 + '0' as u8) as char).collect();
+        println!("{} {} {}", affinity, key, rotor_config_str);
+        for cs in Product::new(26us, 3us) {
+            let rings : String = cs.iter().map(|&x| chr(x as u8)).collect();
+            let key : String = key.chars().zip(cs.iter()).map(|(x, &y)| chr((ord(x) + y as u8) % 26)).collect();
+            let plaintext = encrypt::encrypt(ciphertext, rotor_config, key.as_slice(), rings.as_slice());
+            let s = score(plaintext.as_slice());
+            if maximum_score == 0. || maximum_score < s {
+                maximum_score = s;
+                println!(">>> {} {} {} {}", s, key, rings, plaintext);
+                where_max = Some((s, key, rotor_config.clone(), rings));
             }
-            Some((maximum_score, rotor_config, key, where_max))
         }
     }
+    return where_max;
 }
 
 fn main() {
@@ -127,7 +119,7 @@ fn main() {
         Ok(input) => {
             match brute_force(input.as_slice()) {
                 None => println!("No optimal key found."),
-                Some((score, rotor_config, key, rings)) => {
+                Some((score, key, rotor_config, rings)) => {
                     println!("{} {}", key, score);
                     println!("{}", encrypt::encrypt(input.as_slice(), &rotor_config, key.as_slice(), rings.as_slice()));
                 }
