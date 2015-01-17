@@ -43,7 +43,7 @@ struct Config<'a> {
     sigma_reflector: &'a Vec<u8>,
     plugboard: &'a Vec<u8>,
     plugboard_inv: &'a Vec<u8>,
-    rings: Vec<u8>,
+    rings: &'a Vec<u8>,
 }
 
 fn add26(x : u8, y : u8) -> u8 {
@@ -126,13 +126,13 @@ fn str_to_vec8_rev(input : &str) -> Vec<u8> {
     return input.chars().map(|c| c as u8 - 'A' as u8).rev().collect();
 }
 
-fn create_config<'a>(world: &'a World, rotor_config: &Vec<usize>, rings: &str) -> Config<'a> {
+fn create_config<'a>(world: &'a World, rotor_config: &Vec<u8>, rings: &'a Vec<u8>) -> Config<'a> {
     Config {
-        rotors: rotor_config.iter().map(|&x| &world.rotors[x]).collect(),
+        rotors: rotor_config.iter().map(|&x| &world.rotors[x as usize]).collect(),
         sigma_reflector: &world.reflectors[1],
         plugboard: &world.id,
         plugboard_inv: &world.id,
-        rings: str_to_vec8(rings),
+        rings: rings,
     }
 }
 
@@ -156,22 +156,23 @@ pub fn input_to_u8(input: &str) -> Vec<u8> {
     input.chars().filter_map(|c| ord(c)).collect()
 }
 
-pub fn encrypt_u8(world: &World, input: &Vec<u8>, rotor_config: &Vec<usize>, key: &Vec<usize>, rings: &str) -> Vec<u8> {
+pub fn encrypt_u8(world: &World, input: &Vec<u8>, rotor_config: &Vec<u8>, key: &Vec<u8>, rings: &Vec<u8>) -> Vec<u8> {
     let config = create_config(world, rotor_config, rings);
     // Is this really the best way to reverse a Vec ?
-    let mut state = key.iter().rev().map(|&x| x as u8).collect();
+    let mut state = key.iter().rev().map(|&x| x).collect();
     input.iter().map(|&c| encrypt_one(c, &mut state, &config)).collect()
 }
 
-pub fn encrypt(input : &str, rotor_config : &Vec<usize>, key : &str, rings : &str) -> String {
+pub fn encrypt(input : &str, rotor_config : &Vec<u8>, key : &str, rings : &str) -> String {
     let world = world();
-    let config = create_config(&world, rotor_config, rings);
+    let rings = str_to_vec8(rings);
+    let config = create_config(&world, rotor_config, &rings);
     let mut state = str_to_vec8_rev(key);
     return input.chars().filter_map(|c|
         ord(c).map(|c| chr(encrypt_one(c, &mut state, &config)))).collect();
 }
 
-fn test_one(plaintext: &str, ciphertext: &str, rotor_config: &Vec<usize>, key: &str, rings: &str) {
+fn test_one(plaintext: &str, ciphertext: &str, rotor_config: &Vec<u8>, key: &str, rings: &str) {
     let computed_ciphertext = encrypt(plaintext, rotor_config, key, rings);
     let computed_plaintext = encrypt(ciphertext, rotor_config, key, rings);
     assert_eq!(computed_plaintext, plaintext);
@@ -183,11 +184,11 @@ fn encrypt_tests() {
     test_one(
         "QUEJAIMEAFAIREAPPRENDREUNNOMBREUTILEAUXSAGESIMMORTELARCHIMEDEARTISTEINGENIEURQUIDETONJUGEMENTPEUTPRISERLAVALEURPOURMOITONPROBLEMEEUTDEPAREILSAVANTAGES".as_slice(),
         "UBTSGAGKIOJYHNNGYGWDIEXLIQQHDVALZBFLTKVPIDHNHPETEHGGEEKDCCGBSWDQJGYFPUDHIVBWNLTJHPJPTMHJYFPKSYUBUOPOTFHSJJBFCVUJVJWSMDJVQCZKEMBYLBJFIZRDZFCIQORVGBOBIT".as_slice(),
-        &vec![ 0us, 1, 2 ], "AAA".as_slice(), "AAA".as_slice()
+        &vec![ 0u8, 1, 2 ], "AAA".as_slice(), "AAA".as_slice()
     );
     test_one(
         "HELLOWORLD".as_slice(),
         "CDMOGOSHXC".as_slice(),
-        &vec![ 0us, 1, 2 ], "LMZ".as_slice(), "AAA".as_slice()
+        &vec![ 0u8, 1, 2 ], "LMZ".as_slice(), "AAA".as_slice()
     );
 }

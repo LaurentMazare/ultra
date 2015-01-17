@@ -9,7 +9,7 @@ fn main_encrypt(args: &Vec<String>) {
         println!("Usage: {} encrypt KEY RNG", args[0]);
     }
     else {
-        let rotor_config = vec![ 0us, 1, 2 ];
+        let rotor_config = vec![ 0u8, 1, 2 ];
         let key = args[2].as_slice(); 
         let rings = args[3].as_slice();
         if key.len() != 3 {
