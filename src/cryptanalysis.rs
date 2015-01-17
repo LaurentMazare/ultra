@@ -36,11 +36,11 @@ impl Iterator for Product {
     }
 }
 
-fn score(text : &str) -> f64 {
+fn score(text : &Vec<u8>) -> f64 {
     let mut score : f64 = 0.0;
     let mut qgram_index : usize = 0;
-    for (idx, c) in text.char_indices() {
-        let c = c as i64 - 'A' as i64;
+    for idx in (0us .. text.len()) {
+        let c = text[idx];
         if c < 0 || 25 < c { continue; }
         qgram_index = (qgram_index % (26 * 26 * 26)) * 26 + c as usize;
         if 3 <= idx {
@@ -65,7 +65,7 @@ fn get_worst(treeset: &BTreeSet<(i64, String, Vec<usize>)>) -> Option<(i64, Stri
     }
 }
 
-fn brute_force_rotors_and_key(ciphertext : &str, rings : &str) -> BTreeSet<(i64, String, Vec<usize>)> {
+fn brute_force_rotors_and_key(ciphertext : &Vec<u8>, rings : &str) -> BTreeSet<(i64, String, Vec<usize>)> {
     let mut best_rotors_and_key = BTreeSet::new();
     // Quite awful and inefficient...
     for rotor_config in Product::new(5us, 3us) {
@@ -74,8 +74,8 @@ fn brute_force_rotors_and_key(ciphertext : &str, rings : &str) -> BTreeSet<(i64,
            rotor_config[1] == rotor_config[2] { continue; }
         for cs in Product::new(26us, 3us) {
             let key : String = cs.iter().map(|&x| chr(x as u8)).collect();
-            let plaintext = encrypt::encrypt(ciphertext.as_slice(), &rotor_config, key.as_slice(), rings);
-            let score = score(plaintext.as_slice());
+            let plaintext = encrypt::encrypt_u8(ciphertext, &rotor_config, key.as_slice(), rings);
+            let score = score(&plaintext);
             let score = score as i64;
             // Only keep the 100 best keys...
             if best_rotors_and_key.len() < 100 {
@@ -99,19 +99,19 @@ fn brute_force_rotors_and_key(ciphertext : &str, rings : &str) -> BTreeSet<(i64,
 }
 
 pub fn brute_force(ciphertext : &str) -> Option<(f64, String, Vec<usize>, String)> {
+    let ciphertext = encrypt::input_to_u8(ciphertext);
     let mut maximum_score = 0. as f64;
     let mut where_max = None;
-    let best_rotors_and_key = brute_force_rotors_and_key(ciphertext, "AAA".as_slice());
+    let best_rotors_and_key = brute_force_rotors_and_key(&ciphertext, "AAA".as_slice());
     for &(affinity, ref key, ref rotor_config) in best_rotors_and_key.iter().rev() {
         let rotor_config_str: String = rotor_config.iter().map(|&x| (x as u8 + '0' as u8) as char).collect();
         for cs in Product::new(26us, 3us) {
             let rings : String = cs.iter().map(|&x| chr(x as u8)).collect();
             let key : String = key.chars().zip(cs.iter()).map(|(x, &y)| chr((ord(x) + y as u8) % 26)).collect();
-            let plaintext = encrypt::encrypt(ciphertext, rotor_config, key.as_slice(), rings.as_slice());
-            let s = score(plaintext.as_slice());
+            let plaintext = encrypt::encrypt_u8(&ciphertext, rotor_config, key.as_slice(), rings.as_slice());
+            let s = score(&plaintext);
             if maximum_score == 0. || maximum_score < s {
                 maximum_score = s;
-                println!(">>> {} {} {} {}", s, key, rings, plaintext);
                 where_max = Some((s, key, rotor_config.clone(), rings));
             }
         }

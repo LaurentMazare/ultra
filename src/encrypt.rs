@@ -2,26 +2,20 @@ use std::iter;
 
 static DOUBLE_STEPPING : bool = true;
 
-static ROTORS : [&'static str; 8] = [
+static ROTORS : [&'static str; 5] = [
     "EKMFLGDQVZNTOWYHXUSPAIBRCJ",
     "AJDKSIRUXBLHWTMCQGZNPYFVOE",
     "BDFHJLCPRTXVZNYEIWGAKMUSQO",
     "ESOVPZJAYQUIRHXLNFTGKDCMWB",
     "VZBRGITYUPSDNHLXAWMJQOFECK",
-    "JPGVOUMFYQBENHZRDKASXLICTW",
-    "NZJHGRCXMYSWBOUFAIVLPEKQDT",
-    "FKQHTLXOCBJSPDZRAMEWNIUYGV",
 ];
 
-static TURNOVERS : [&'static str; 8] = [
-    "Q",
-    "E",
-    "V",
-    "J",
-    "Z",
-    "ZM",
-    "ZM",
-    "ZM",
+static TURNOVERS : [char; 5] = [
+    'Q',
+    'E',
+    'V',
+    'J',
+    'Z',
 ];
 
 static REFLECTORS : [&'static str; 5] = [
@@ -44,23 +38,6 @@ struct Config {
     plugboard: Vec<u8>,
     plugboard_inv: Vec<u8>,
     rings: Vec<u8>,
-}
-
-fn ord(c : char) -> Option<u8> {
-    if 'a' <= c && c <= 'z' {
-        return Some(c as u8 - 'a' as u8);
-    }
-    else if 'A' <= c && c <= 'Z' {
-        return Some(c as u8 - 'A' as u8);
-    }
-    else { return None; }
-}
-
-fn chr(o : u8) -> char {
-    if o < 26 {
-        return (o + 'A' as u8) as char;
-    }
-    return '?';
 }
 
 fn add26(x : u8, y : u8) -> u8 {
@@ -118,6 +95,23 @@ fn encrypt_one(value : u8, state : &mut Vec<u8>, config : &Config) -> u8 {
     return config.plugboard_inv[value as usize];
 }
 
+fn ord(c : char) -> Option<u8> {
+    if 'a' <= c && c <= 'z' {
+        return Some(c as u8 - 'a' as u8);
+    }
+    else if 'A' <= c && c <= 'Z' {
+        return Some(c as u8 - 'A' as u8);
+    }
+    else { return None; }
+}
+
+fn chr(o : u8) -> char {
+    if o < 26 {
+        return (o + 'A' as u8) as char;
+    }
+    return '?';
+}
+
 fn str_to_vec8(input : &str) -> Vec<u8> {
     return input.chars().map(|c| c as u8 - 'A' as u8).collect();
 }
@@ -125,7 +119,6 @@ fn str_to_vec8(input : &str) -> Vec<u8> {
 fn str_to_vec8_rev(input : &str) -> Vec<u8> {
     return input.chars().map(|c| c as u8 - 'A' as u8).rev().collect();
 }
-
 
 fn plugboard_config(plugboard: &Vec<(char, char)>) -> Vec<u8> {
     let mut id: Vec<u8> = (0..26).map(|x| x as u8).collect();
@@ -142,7 +135,7 @@ fn create_config(rotor_config : &Vec<usize>, rings : &str) -> Config {
     let mut rotors = Vec::new();
     for &rotor_idx in rotor_config.iter() {
         let sigma = str_to_vec8(ROTORS[rotor_idx]);
-        let turnover = TURNOVERS[rotor_idx].chars().next().unwrap() as u8 - 'A' as u8;
+        let turnover = TURNOVERS[rotor_idx] as u8 - 'A' as u8;
         let sigma_inv = inv_permutation(&sigma);
         let rotor = Rotor { sigma: sigma, sigma_inv: sigma_inv, turnover: turnover };
         rotors.push(rotor);
@@ -158,6 +151,16 @@ fn create_config(rotor_config : &Vec<usize>, rings : &str) -> Config {
         plugboard_inv: plugboard_inv,
         rings: str_to_vec8(rings),
     };
+}
+
+pub fn input_to_u8(input: &str) -> Vec<u8> {
+    input.chars().filter_map(|c| ord(c)).collect()
+}
+
+pub fn encrypt_u8(input: &Vec<u8>, rotor_config: &Vec<usize>, key: &str, rings: &str) -> Vec<u8> {
+    let config = create_config(rotor_config, rings);
+    let mut state = str_to_vec8_rev(key);
+    input.iter().map(|&c| encrypt_one(c, &mut state, &config)).collect()
 }
 
 pub fn encrypt(input : &str, rotor_config : &Vec<usize>, key : &str, rings : &str) -> String {
